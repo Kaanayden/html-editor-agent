@@ -14,7 +14,8 @@ Thank you for your interest in contributing! This document provides guidelines f
 
 1. **Fork and Clone**
    ```bash
-   git clone https://github.com/YOUR_USERNAME/html-editor-agent.git
+   # Fork the repository first on GitHub, then clone your fork
+   git clone https://github.com/<your-username>/html-editor-agent.git
    cd html-editor-agent
    ```
 

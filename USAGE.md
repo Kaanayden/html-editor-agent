@@ -110,7 +110,7 @@ The AI can handle multiple changes in one request:
 ### API Errors?
 - Check your OpenAI account has available credits
 - Verify your API key is entered correctly
-- Check [OpenAI Status](https://status.openai.com/) for service issues
+- Check [OpenAI Status page](https://status.openai.com) for service issues
 
 ## Limitations
 
