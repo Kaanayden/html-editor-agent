@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HTML Editor Agent</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>🤖 HTML Editor Agent</h1>
+      <button id="settingsBtn" class="icon-btn" title="Settings">⚙️</button>
+    </div>
+
+    <!-- Settings Panel -->
+    <div id="settingsPanel" class="settings-panel hidden">
+      <h3>OpenAI API Key</h3>
+      <input type="password" id="apiKeyInput" placeholder="Enter your OpenAI API key">
+      <button id="saveApiKey" class="btn btn-primary">Save</button>
+      <button id="closeSettings" class="btn btn-secondary">Close</button>
+      <div id="apiKeyStatus" class="status-message"></div>
+    </div>
+
+    <!-- Chat Interface -->
+    <div id="chatInterface" class="chat-interface">
+      <div id="chatMessages" class="chat-messages"></div>
+      
+      <div class="input-container">
+        <textarea 
+          id="userInput" 
+          placeholder="Ask me to modify the HTML (e.g., 'Change the main heading to red' or 'Add a button below the title')"
+          rows="3"
+        ></textarea>
+        <button id="sendBtn" class="btn btn-primary">Send</button>
+      </div>
+    </div>
+
+    <div class="footer">
+      <small>Powered by OpenAI</small>
+    </div>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>
