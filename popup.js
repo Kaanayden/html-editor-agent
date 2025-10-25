@@ -110,7 +110,7 @@ class PopupController {
     input.value = '';
 
     // Show loading
-    const loadingMsg = this.addMessage('assistant', 'Thinking<span class="loading"></span>');
+    const loadingMsg = this.addMessage('assistant', 'Thinking<span class="loading"></span>', true);
 
     try {
       // Get current page HTML
@@ -143,11 +143,19 @@ class PopupController {
     }
   }
 
-  addMessage(type, text) {
+  addMessage(type, text, allowHTML = false) {
     const messagesDiv = document.getElementById('chatMessages');
     const messageDiv = document.createElement('div');
     messageDiv.className = `message ${type}`;
-    messageDiv.innerHTML = text;
+    
+    // Only use innerHTML for specific trusted content (like loading animation)
+    // Otherwise use textContent to prevent XSS
+    if (allowHTML) {
+      messageDiv.innerHTML = text;
+    } else {
+      messageDiv.textContent = text;
+    }
+    
     messagesDiv.appendChild(messageDiv);
     messagesDiv.scrollTop = messagesDiv.scrollHeight;
     return messageDiv;
