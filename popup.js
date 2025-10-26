@@ -3,6 +3,7 @@ class PopupController {
   constructor() {
     this.apiKey = null;
     this.chatMessages = [];
+    this.currentWorkflowId = null;
     this.init();
   }
 
@@ -21,6 +22,13 @@ class PopupController {
     if (!this.apiKey) {
       this.addMessage('system', 'Please set your OpenAI API key in settings (click the gear icon)');
     }
+
+    // Listen for workflow status updates
+    chrome.runtime.onMessage.addListener((message) => {
+      if (message.type === 'WORKFLOW_STATUS') {
+        this.handleWorkflowStatus(message);
+      }
+    });
   }
 
   setupEventListeners() {
@@ -42,6 +50,11 @@ class PopupController {
     // Send message
     document.getElementById('sendBtn').addEventListener('click', () => {
       this.sendMessage();
+    });
+
+    // Stop button
+    document.getElementById('stopBtn').addEventListener('click', () => {
+      this.stopWorkflow();
     });
 
     // Enter to send (Ctrl+Enter for new line)
@@ -94,6 +107,62 @@ class PopupController {
     }, 1500);
   }
 
+
+  handleWorkflowStatus(message) {
+    const { step, message: statusMsg, workflowId } = message;
+    
+    if (workflowId !== this.currentWorkflowId) {
+      return;
+    }
+
+    // Update or add status message
+    if (this.statusMessageElement) {
+      this.statusMessageElement.textContent = statusMsg;
+    } else {
+      this.statusMessageElement = this.addMessage('system', statusMsg);
+    }
+
+    // If workflow is complete or stopped, clear the status and enable buttons
+    if (step === 'complete' || step === 'stopped') {
+      setTimeout(() => {
+        if (this.statusMessageElement) {
+          this.statusMessageElement.remove();
+          this.statusMessageElement = null;
+        }
+        this.currentWorkflowId = null;
+        this.toggleWorkflowButtons(false);
+      }, 2000);
+    }
+  }
+
+  toggleWorkflowButtons(isRunning) {
+    const sendBtn = document.getElementById('sendBtn');
+    const stopBtn = document.getElementById('stopBtn');
+    const userInput = document.getElementById('userInput');
+
+    if (isRunning) {
+      sendBtn.disabled = true;
+      sendBtn.style.opacity = '0.5';
+      stopBtn.classList.remove('hidden');
+      userInput.disabled = true;
+    } else {
+      sendBtn.disabled = false;
+      sendBtn.style.opacity = '1';
+      stopBtn.classList.add('hidden');
+      userInput.disabled = false;
+    }
+  }
+
+  async stopWorkflow() {
+    if (this.currentWorkflowId) {
+      await chrome.runtime.sendMessage({
+        type: 'STOP_WORKFLOW',
+        workflowId: this.currentWorkflowId
+      });
+      this.addMessage('system', 'Stopping workflow...');
+    }
+  }
+
   async sendMessage() {
     const input = document.getElementById('userInput');
     const message = input.value.trim();
@@ -109,8 +178,8 @@ class PopupController {
     this.addMessage('user', message);
     input.value = '';
 
-    // Show loading
-    const loadingMsg = this.addMessage('assistant', 'Thinking<span class="loading"></span>', true);
+    // Enable workflow controls
+    this.toggleWorkflowButtons(true);
 
     try {
       // Get current page HTML
@@ -124,21 +193,19 @@ class PopupController {
         apiKey: this.apiKey
       });
 
-      // Remove loading message
-      loadingMsg.remove();
+      // Store workflow ID
+      this.currentWorkflowId = response.workflowId;
+
+      // Disable workflow controls
+      this.toggleWorkflowButtons(false);
 
       if (response.success) {
         this.addMessage('assistant', response.reply);
-        
-        // If there are HTML modifications, show confirmation
-        if (response.modifications) {
-          this.addMessage('system', 'Modifications applied to the page!');
-        }
       } else {
         this.addMessage('error', `Error: ${response.error}`);
       }
     } catch (error) {
-      loadingMsg.remove();
+      this.toggleWorkflowButtons(false);
       this.addMessage('error', `Error: ${error.message}`);
     }
   }
