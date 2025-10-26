@@ -3,6 +3,9 @@
 // Track active agent workflows
 const activeWorkflows = new Map();
 
+// AI model temperature for consistent behavior
+const AI_TEMPERATURE = 0.3;
+
 // Listen for messages from popup
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.type === 'CHAT_REQUEST') {
@@ -19,8 +22,7 @@ async function handleChatRequest(request, sendResponse) {
   const workflowId = Date.now().toString();
   const workflow = {
     id: workflowId,
-    stopped: false,
-    statusCallback: request.statusCallback
+    stopped: false
   };
   activeWorkflows.set(workflowId, workflow);
 
@@ -28,14 +30,19 @@ async function handleChatRequest(request, sendResponse) {
     const { message, tabId, apiKey } = request;
 
     // Send status updates back to popup
-    const sendStatus = (step, message, data = {}) => {
-      chrome.runtime.sendMessage({
-        type: 'WORKFLOW_STATUS',
-        workflowId: workflowId,
-        step: step,
-        message: message,
-        ...data
-      });
+    const sendStatus = (step, statusMessage, data = {}) => {
+      try {
+        chrome.runtime.sendMessage({
+          type: 'WORKFLOW_STATUS',
+          workflowId: workflowId,
+          step: step,
+          message: statusMessage,
+          ...data
+        });
+      } catch (error) {
+        // Popup may be closed, ignore error
+        console.log('Could not send status update:', error.message);
+      }
     };
 
     // Step 1: Analyze the page
@@ -71,6 +78,9 @@ async function handleChatRequest(request, sendResponse) {
     // Step 6: Retry if needed
     if (!verification.success && !workflow.stopped) {
       sendStatus('retrying', 'Modification failed, retrying...');
+      
+      // Check again if workflow was stopped
+      if (workflow.stopped) throw new Error('Workflow stopped');
       
       const retryPlan = await planModification(
         message, 
@@ -151,14 +161,20 @@ async function getPageContext(tabId) {
 }
 
 async function analyzeRequest(userMessage, pageContext, apiKey) {
+  // Sanitize HTML to prevent prompt injection
+  const sanitizedHTML = pageContext.bodyHTML
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .substring(0, 3000); // Further limit for safety
+  
   const systemPrompt = `You are an HTML analysis expert. Analyze the user's request and the page structure to identify the target element.
 
 Current page:
 - Title: ${pageContext.title}
 - URL: ${pageContext.url}
 
-Page structure (first 5000 chars):
-${pageContext.bodyHTML}
+Page structure (sanitized HTML, first 3000 chars):
+${sanitizedHTML}
 
 User request: "${userMessage}"
 
@@ -187,7 +203,7 @@ Respond in JSON format:
         { role: 'system', content: systemPrompt },
         { role: 'user', content: userMessage }
       ],
-      temperature: 0.3,
+      temperature: AI_TEMPERATURE,
       max_tokens: 500
     })
   });
@@ -250,7 +266,7 @@ Create a modification plan in JSON format:
         { role: 'system', content: systemPrompt },
         { role: 'user', content: `Plan the modification for: ${userMessage}` }
       ],
-      temperature: 0.3,
+      temperature: AI_TEMPERATURE,
       max_tokens: 500
     })
   });

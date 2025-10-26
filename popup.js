@@ -193,20 +193,18 @@ class PopupController {
         apiKey: this.apiKey
       });
 
-      // Store workflow ID
-      this.currentWorkflowId = response.workflowId;
-
-      // Disable workflow controls
-      this.toggleWorkflowButtons(false);
-
       if (response.success) {
+        // Store workflow ID only on success
+        this.currentWorkflowId = response.workflowId;
         this.addMessage('assistant', response.reply);
       } else {
         this.addMessage('error', `Error: ${response.error}`);
       }
     } catch (error) {
-      this.toggleWorkflowButtons(false);
       this.addMessage('error', `Error: ${error.message}`);
+    } finally {
+      // Always disable workflow controls
+      this.toggleWorkflowButtons(false);
     }
   }
 
